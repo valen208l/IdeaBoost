@@ -14,6 +14,7 @@ client = genai.Client()
 
 MODELS = [
     os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"),
+    "gemini-3.8-flash",
 ]
 
 BASE = os.path.dirname(os.path.abspath(__file__))
