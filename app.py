@@ -37,7 +37,6 @@ Responde SIEMPRE con un único JSON válido (sin texto extra) en uno de estos fo
 {"kind":"detail","title":"título de la idea","steps":["paso 1","paso 2","paso 3","paso 4"],"tip":"un consejo breve"}
 """
 
-
 def ask_gemini(contents):
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM,
@@ -49,6 +48,8 @@ def ask_gemini(contents):
     for model in MODELS:
         for attempt in range(2):
             try:
+                app.logger.info("Intentando generar con %s", model)
+
                 response = client.models.generate_content(
                     model=model,
                     contents=contents,
@@ -60,20 +61,28 @@ def ask_gemini(contents):
                 if not isinstance(result, dict) or "kind" not in result:
                     raise ValueError("Formato inesperado de Gemini")
 
+                app.logger.info("Respuesta generada con %s", model)
                 return result
 
             except Exception as error:
                 last = error
+                code = getattr(error, "code", None)
+
                 app.logger.warning(
                     "%s, intento %d: %s",
                     model, attempt + 1, error
                 )
 
-                if getattr(error, "code", None) in (429, 503) and attempt == 0:
-                    time.sleep(2)
+                if code in (429, 503) and attempt == 0:
+                    time.sleep(4)
                     continue
 
-                break
+                # Si el modelo está saturado, prueba el otro 3.5
+                if code in (429, 503):
+                    break
+
+                # Si es otro error, no oculta
+                raise
 
     raise last
 
