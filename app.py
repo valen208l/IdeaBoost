@@ -14,7 +14,7 @@ client = genai.Client()
 
 MODELS = [
     os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"),
-    "gemini-3.8-flash",
+    "gemini-3.5-flash",
 ]
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -47,43 +47,36 @@ def ask_gemini(contents):
     last = None
 
     for model in MODELS:
-        for attempt in range(2):
-            try:
-                app.logger.info("Intentando generar con %s", model)
+        try:
+            app.logger.info("Intentando generar con %s", model)
 
-                response = client.models.generate_content(
-                    model=model,
-                    contents=contents,
-                    config=config,
-                )
+            response = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config,
+            )
 
-                result = json.loads(response.text)
+            result = json.loads(response.text)
 
-                if not isinstance(result, dict) or "kind" not in result:
-                    raise ValueError("Formato inesperado de Gemini")
+            if not isinstance(result, dict) or "kind" not in result:
+                raise ValueError("Formato inesperado de Gemini")
 
-                app.logger.info("Respuesta generada con %s", model)
-                return result
+            app.logger.info("Respuesta generada con %s", model)
+            return result
 
-            except Exception as error:
-                last = error
-                code = getattr(error, "code", None)
+        except Exception as error:
+            last = error
+            code = getattr(error, "code", None)
 
-                app.logger.warning(
-                    "%s, intento %d: %s",
-                    model, attempt + 1, error
-                )
+            app.logger.warning(
+                "El modelo %s falló: %s",
+                model, error
+            )
 
-                if code in (429, 503) and attempt == 0:
-                    time.sleep(4)
-                    continue
+            if code in (429, 503):
+                continue
 
-                # Si el modelo está saturado, prueba el otro 3.5
-                if code in (429, 503):
-                    break
-
-                # Si es otro error, no oculta
-                raise
+            raise
 
     raise last
 
